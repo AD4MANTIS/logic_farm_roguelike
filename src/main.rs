@@ -31,7 +31,11 @@ fn main() {
         )
         .insert_resource(Money(100.0))
         .add_systems(Startup, setup)
-        .add_systems(Update, (character_movement, spawn_pig, pig_lifetime))
+        .add_systems(
+            Update,
+            (character_movement, spawn_pig, pig_lifetime, pig_move),
+        )
+        .add_systems(Update, bevy::window::close_on_esc)
         .run();
 }
 
@@ -64,18 +68,18 @@ fn character_movement(
     for (mut transform, player) in &mut characters {
         let movement_amount = player.speed * time.delta_seconds();
 
-        if input.pressed(KeyCode::W) {
-            transform.translation.y += movement_amount;
+        let mut movement = IVec3::default();
+        for key in input.get_pressed() {
+            match key {
+                KeyCode::W => movement.y += 1,
+                KeyCode::S => movement.y -= 1,
+                KeyCode::D => movement.x += 1,
+                KeyCode::A => movement.x -= 1,
+                _ => {}
+            }
         }
-        if input.pressed(KeyCode::S) {
-            transform.translation.y -= movement_amount;
-        }
-        if input.pressed(KeyCode::D) {
-            transform.translation.x += movement_amount;
-        }
-        if input.pressed(KeyCode::A) {
-            transform.translation.x -= movement_amount;
-        }
+
+        transform.translation += movement.as_vec3().normalize_or_zero() * movement_amount;
     }
 }
 
@@ -127,5 +131,15 @@ fn pig_lifetime(
 
             info!("Pig sold for $15! Current Money: ${:?}", money.0);
         }
+    }
+}
+
+fn pig_move(time: Res<Time>, mut pigs: Query<&mut Transform, With<Pig>>) {
+    let movement_amount = 10.0 * time.delta_seconds();
+
+    for mut pig in &mut pigs {
+        let movement = Vec3::new(1.0, 1.0, 0.0);
+
+        pig.translation += movement.normalize_or_zero() * movement_amount;
     }
 }
